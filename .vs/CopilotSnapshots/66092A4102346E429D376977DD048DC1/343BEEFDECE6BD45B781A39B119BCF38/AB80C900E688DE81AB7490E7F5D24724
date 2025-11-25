@@ -1,0 +1,50 @@
+﻿# setup_windows.ps1
+# Create virtual environment and install Python dependencies for this project (Windows)
+# Run from repository root: PowerShell (no admin required)
+
+Write-Host "Windows setup: create venv and install requirements" -ForegroundColor Green
+n# Ensure we are in script directory (repo root when script is placed in root)
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+Set-Location $scriptPath
+n# Check for Python
+$pyCmd = Get-Command python -ErrorAction SilentlyContinuenif (-not $pyCmd) {
+    Write-Host "ERROR: Python not found on PATH. Install Python 3.8-3.11 from https://www.python.org/downloads/" -ForegroundColor Red
+    exit 1
+}
+n$venvDir = Join-Path $scriptPath "venv"nif (-not (Test-Path $venvDir)) {
+    Write-Host "Creating virtual environment..." -ForegroundColor Yellow
+    python -m venv $venvDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Failed to create virtual environment" -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "Virtual environment created at $venvDir" -ForegroundColor Green
+} else {
+    Write-Host "Virtual environment already exists at $venvDir" -ForegroundColor Yellow
+}
+n$pythonExe = Join-Path $venvDir "Scripts\python.exe"$pipExe = Join-Path $venvDir "Scripts\pip.exe"
+nif (-not (Test-Path $pythonExe)) {
+    Write-Host "ERROR: Virtual environment Python executable not found at $pythonExe" -ForegroundColor Red
+    exit 1
+}
+nWrite-Host "Upgrading pip, setuptools and wheel..." -ForegroundColor Yellow
+& $pythonExe -m pip install --upgrade pip setuptools wheel
+nWrite-Host "Installing requirements from requirements.txt..." -ForegroundColor Yellow
+& $pipExe install -r requirements.txt
+nif ($LASTEXITCODE -ne 0) {
+    Write-Host "pip install returned exit code $LASTEXITCODE" -ForegroundColor Yellow
+    Write-Host "Attempting to install dlib as binary wheel (may succeed if a compatible wheel is available)..." -ForegroundColor Yellow
+    & $pipExe install --only-binary=:all: dlib==19.24.4
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Automatic installation of dlib failed." -ForegroundColor Red
+        Write-Host "Options:" -ForegroundColor Cyan
+        Write-Host " 1) Run .\install_dlib.ps1 as Administrator to install Visual C++ Build Tools, then rerun this script." -ForegroundColor Yellow
+        Write-Host " 2) Use conda: `conda create -n face python=3.10; conda activate face; conda install -c conda-forge dlib face-recognition opencv`" -ForegroundColor Yellow
+        Write-Host " 3) Download a prebuilt Windows wheel that matches your Python version and run: .\venv\Scripts\pip.exe install <wheel-file>" -ForegroundColor Yellow
+    } else {
+        Write-Host "dlib binary wheel installed successfully" -ForegroundColor Green
+    }
+} else {
+    Write-Host "All requirements installed (exit code 0)" -ForegroundColor Green
+}
+nWrite-Host "" -ForegroundColor GreennWrite-Host "To run the program:" -ForegroundColor CyannWrite-Host "    $pythonExe src\main.py" -ForegroundColor CyannWrite-Host "If you prefer to activate the venv in this shell use:` .\venv\Scripts\Activate.ps1`" -ForegroundColor CyannnWrite-Host "Setup complete." -ForegroundColor Green

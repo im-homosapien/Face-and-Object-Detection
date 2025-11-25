@@ -1,6 +1,52 @@
 """
-Object Detector Module - Detects and classifies objects using YOLOv4.
+Object Detector Module - YOLOv4-tiny Object Detection
+
+This module implements real-time object detection using YOLOv4-tiny,
+a fast and accurate object detection model. It can detect 80 different
+object classes from the COCO dataset.
+
+Model Details:
+    - Architecture: YOLOv4-tiny (lightweight version of YOLOv4)
+    - Input: 416x416 RGB image
+    - Output: Bounding boxes, class labels, confidence scores
+    - Classes: 80 COCO classes (person, car, dog, laptop, etc.)
+    - Model Size: ~24MB
+
+Features:
+    - Real-time object detection
+    - 80+ object classes
+    - Non-maximum suppression for clean results
+    - Configurable confidence threshold
+    - Automatic model download
+    - Color-coded visualization
+
+Performance:
+    - Faster than full YOLOv4
+    - Suitable for real-time applications
+    - Good balance of speed and accuracy
+    - CPU-optimized
+
+COCO Classes Include:
+    person, bicycle, car, motorcycle, airplane, bus, train, truck, boat,
+    traffic light, fire hydrant, stop sign, parking meter, bench, bird,
+    cat, dog, horse, sheep, cow, elephant, bear, zebra, giraffe, backpack,
+    umbrella, handbag, tie, suitcase, frisbee, skis, snowboard, sports ball,
+    kite, baseball bat, baseball glove, skateboard, surfboard, tennis racket,
+    bottle, wine glass, cup, fork, knife, spoon, bowl, banana, apple,
+    sandwich, orange, broccoli, carrot, hot dog, pizza, donut, cake, chair,
+    couch, potted plant, bed, dining table, toilet, tv, laptop, mouse,
+    remote, keyboard, cell phone, microwave, oven, toaster, sink,
+    refrigerator, book, clock, vase, scissors, teddy bear, hair drier,
+    toothbrush
+
+Usage:
+    detector = ObjectDetector(confidence_threshold=0.4)
+    objects = detector.detect(frame)  # Returns list of (x1, y1, x2, y2, class, conf)
+
+Author: Face & Object Detection System
+Version: 2.0
 """
+
 import cv2
 import numpy as np
 import os
@@ -8,19 +54,58 @@ import urllib.request
 
 
 class ObjectDetector:
-    """Detects objects in images using YOLOv4-tiny (faster and more accurate)."""
+    """
+    Detects objects in images using YOLOv4-tiny.
+    
+    This class provides a simple interface for object detection using
+    YOLOv4-tiny, a fast and accurate object detection model. It automatically
+    downloads required model files on first use.
+    
+    Attributes:
+        confidence_threshold (float): Minimum confidence for valid detection
+        nms_threshold (float): Non-maximum suppression threshold
+        net (cv2.dnn.Net): Loaded YOLO model
+        classes (list): List of 80 COCO class names
+        output_layers (list): Names of YOLO output layers
+        colors (numpy.ndarray): Random colors for each class
+    
+    Model Files:
+        - yolov4-tiny.weights: Pre-trained weights (~24MB)
+        - yolov4-tiny.cfg: Network configuration
+        - coco.names: Class names file
+    """
     
     def __init__(self, confidence_threshold=0.4, nms_threshold=0.4):
         """
-        Initialize object detector with YOLOv4.
+        Initialize object detector with YOLOv4-tiny.
+        
+        Loads the pre-trained YOLOv4-tiny model for object detection.
+        If model files are not present, they will be automatically
+        downloaded from the official Darknet repository.
         
         Args:
-            confidence_threshold: Minimum confidence for detection
-            nms_threshold: Non-maximum suppression threshold
+            confidence_threshold (float): Minimum confidence score for a
+                detection to be considered valid. Range: 0.0 to 1.0
+                - Lower values: More detections, more false positives
+                - Higher values: Fewer detections, fewer false positives
+                - Recommended: 0.4 for balanced performance
+            
+            nms_threshold (float): Non-maximum suppression threshold for
+                removing overlapping bounding boxes. Range: 0.0 to 1.0
+                - Lower values: More aggressive suppression
+                - Higher values: Keep more overlapping boxes
+                - Recommended: 0.4 for clean results
+        
+        Raises:
+            Exception: If model files cannot be downloaded or loaded
         """
         self.confidence_threshold = confidence_threshold
         self.nms_threshold = nms_threshold
+        
+        # Load model and class names
         self.net, self.classes, self.output_layers = self._load_model()
+        
+        # Generate random colors for each class (for visualization)
         self.colors = np.random.uniform(0, 255, size=(len(self.classes), 3))
         
         # Set backend for better performance

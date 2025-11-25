@@ -4,9 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
 build/
 develop-eggs/
 dist/
@@ -22,41 +19,74 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual Environment
 venv/
 .venv/
 ENV/
 env/
+.virtualenv/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
-# Project specific
+# Project specific - Face Database
+face_encodings_advanced.pkl
+face_database_v2.pkl
 known_faces/*.jpg
 known_faces/*.png
 known_faces/*.jpeg
 !known_faces/README.md
-face_encodings_advanced.pkl
 
 # Test files
 test_images/
 Exceptions and tests/
 
-# Python cache
-__pycache__/
-*.pyc
+# DeepFace cache
+.deepface/
 
-# Models
+# Models - Keep config files, ignore weights
 *.pkl
 *.h5
 *.pb
+*.pth
+*.onnx
 models/*.caffemodel
+models/*.weights
 !models/.gitkeep
+!models/*.cfg
+!models/*.prototxt
+!models/*.names
+
+# Logs
+*.log
+logs/
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# Windows
+$RECYCLE.BIN/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# Environment variables
+.env
+.env.local

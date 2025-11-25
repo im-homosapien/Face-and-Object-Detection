@@ -4,7 +4,9 @@ numpy>=2.0,<2.3.0
 
 # Face recognition with deep learning
 face-recognition>=1.3.0
-dlib>=19.24.0
+# Use pre-built dlib wheel to avoid needing Visual Studio
+dlib==19.24.0
+
 
 # Object tracking
 scipy>=1.10.0

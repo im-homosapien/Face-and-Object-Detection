@@ -2,11 +2,29 @@
 Unified Application - Face Recognition + Object Detection with Person ReID.
 """
 import cv2
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from detection import FaceDetector, ObjectDetector
 from recognition import FaceEmbedder, FaceTracker
 from storage import FaceDatabase
 from ui import UIRenderer, InputHandler
 from tracking import ObjectTracker, PersonTracker
+
+# Import performance config
+try:
+    from performance_config import (
+        FACE_MODEL, FACE_CONFIDENCE_THRESHOLD, 
+        FACE_SAMPLES_NEEDED, FACE_MATCH_THRESHOLD,
+        OBJECT_CONFIDENCE_THRESHOLD
+    )
+except ImportError:
+    FACE_MODEL = "Facenet"
+    FACE_CONFIDENCE_THRESHOLD = 0.5
+    FACE_SAMPLES_NEEDED = 20
+    FACE_MATCH_THRESHOLD = 0.25
+    OBJECT_CONFIDENCE_THRESHOLD = 0.4
 
 
 class UnifiedApp:
@@ -29,15 +47,15 @@ class UnifiedApp:
         
         # Initialize face recognition modules
         if enable_face_recognition:
-            self.face_detector = FaceDetector(confidence_threshold=0.5)
-            self.embedder = FaceEmbedder()
+            self.face_detector = FaceDetector(confidence_threshold=FACE_CONFIDENCE_THRESHOLD)
+            self.embedder = FaceEmbedder(model_name=FACE_MODEL)
             self.database = FaceDatabase()
-            self.tracker = FaceTracker(samples_needed=20)
+            self.tracker = FaceTracker(samples_needed=FACE_SAMPLES_NEEDED)
             self.input_handler = InputHandler()
         
         # Initialize object detection
         if enable_object_detection:
-            self.object_detector = ObjectDetector(confidence_threshold=0.4)
+            self.object_detector = ObjectDetector(confidence_threshold=OBJECT_CONFIDENCE_THRESHOLD)
             self.object_tracker = ObjectTracker(max_disappeared=20)
         
         # Initialize person tracker (ReID)
@@ -46,41 +64,62 @@ class UnifiedApp:
         
         self.ui = UIRenderer()
         
+        # Performance optimization
+        self.frame_skip = 0
+        self.process_every_n_frames = 3  # Process every 3rd frame
+        self.last_face_results = []
+        self.last_object_results = []
+        
         print("=" * 60)
         print("System ready!")
         print("=" * 60)
     
-    def process_frame(self, frame):
+    def process_frame(self, frame, force_process=False):
         """
         Process a single frame with Person ReID.
         
         Args:
             frame: BGR image from webcam
+            force_process: Force processing even if frame should be skipped
             
         Returns:
             Tuple of (processed frame, face results, object results)
         """
+        # Frame skipping for performance
+        self.frame_skip += 1
+        if not force_process and self.frame_skip % self.process_every_n_frames != 0:
+            # Use last results for skipped frames
+            output = self._draw_results(frame, self.last_face_results, self.last_object_results)
+            return output, self.last_face_results, self.last_object_results
+        
+        # Resize frame for faster processing
+        scale = 0.5
+        small_frame = cv2.resize(frame, None, fx=scale, fy=scale)
+        
         face_results = []
         object_results = []
         person_bodies = []
         
-        # Step 1: Detect person bodies first (for ReID)
+        # Step 1: Detect person bodies first (for ReID) - on small frame
         if self.enable_face_recognition and self.enable_object_detection:
-            all_objects = self.object_detector.detect(frame)
+            all_objects = self.object_detector.detect(small_frame)
             
-            # Extract person detections
+            # Extract person detections and scale back
             for x1, y1, x2, y2, class_name, confidence in all_objects:
                 if class_name == 'person':
+                    x1, y1, x2, y2 = int(x1/scale), int(y1/scale), int(x2/scale), int(y2/scale)
                     person_bodies.append((x1, y1, x2, y2))
             
             # Update person tracker
             tracked_persons = self.person_tracker.update(person_bodies)
         
-        # Step 2: Face recognition with ReID
+        # Step 2: Face recognition with ReID - on small frame
         if self.enable_face_recognition:
-            faces = self.face_detector.detect(frame)
+            faces = self.face_detector.detect(small_frame)
             
             for x1, y1, x2, y2, confidence in faces:
+                # Scale coordinates back to original size
+                x1, y1, x2, y2 = int(x1/scale), int(y1/scale), int(x2/scale), int(y2/scale)
                 face_img = frame[y1:y2, x1:x2]
                 face_box = (x1, y1, x2, y2)
                 
@@ -88,7 +127,7 @@ class UnifiedApp:
                     continue
                 
                 embedding = self.embedder.extract(face_img)
-                name, distance = self.database.find_match(embedding)
+                name, distance = self.database.find_match(embedding, threshold=FACE_MATCH_THRESHOLD)
                 
                 # Find which person body this face belongs to
                 person_id = None
@@ -137,15 +176,17 @@ class UnifiedApp:
                         'person_id': person_id
                     })
         
-        # Object detection with tracking
+        # Object detection with tracking - on small frame
         if self.enable_object_detection:
-            objects = self.object_detector.detect(frame)
+            objects = self.object_detector.detect(small_frame)
             
-            # Filter out person class if face recognition is enabled
+            # Filter out person class if face recognition is enabled and scale back
             filtered_objects = []
             for x1, y1, x2, y2, class_name, confidence in objects:
                 if class_name == 'person' and self.enable_face_recognition:
                     continue
+                # Scale coordinates back to original size
+                x1, y1, x2, y2 = int(x1/scale), int(y1/scale), int(x2/scale), int(y2/scale)
                 filtered_objects.append((x1, y1, x2, y2, class_name, confidence))
             
             # Update tracker with detections
@@ -168,6 +209,10 @@ class UnifiedApp:
                             'id': object_id
                         })
                         break
+        
+        # Store results for frame skipping
+        self.last_face_results = face_results
+        self.last_object_results = object_results
         
         # Draw results
         output = self._draw_results(frame, face_results, object_results)
