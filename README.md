@@ -35,8 +35,8 @@ A high-performance, real-time face recognition and object detection system built
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/dhirajkk91/Face-and-Object-tracking.git
-cd Face-and-Object-tracking
+git clone https://github.com/im-homosapien/Face-and-Object-Detection.git
+cd Face-and-Object-Detection
 ```
 
 ### 2. Create Virtual Environment
