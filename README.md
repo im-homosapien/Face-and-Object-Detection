@@ -258,27 +258,4 @@ Verifies camera is working correctly.
 2. **Frame Downscaling** - Reduce resolution for processing
 3. **Model Selection** - Choose faster models (Facenet vs VGG-Face)
 4. **Face Resizing** - Optimize face crop sizes
-5. **Caching** - Reuse embeddings and detection results
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
-
-## License
-
-This project is open source and available under the MIT License.
-
-## Acknowledgments
-
-- OpenCV for computer vision tools
-- DeepFace for face recognition framework
-- YOLOv4 for object detection
-- dlib for face detection capabilities
-
-## Contact
-
-For questions or support, please open an issue on GitHub.
-
----
-
-**Enjoy your optimized face and object detection system! 🚀**
+5. **Caching** - Reuse embeddings and detection 
